@@ -69,7 +69,7 @@ namespace CutterUpdater
 
         static readonly HttpClientWithProgress client = new HttpClientWithProgress();
 
-        // Based on: https://stackoverflow.com/a/56903270/1806760
+        // BASED ON: https://stackoverflow.com/a/56903270/1806760
         public static void ExtractZipFileToDirectory(string sourceZipFilePath, string destinationDirectoryName, bool overwrite)
         {
             using (var archive = ZipFile.Open(sourceZipFilePath, ZipArchiveMode.Read))
@@ -92,14 +92,14 @@ namespace CutterUpdater
                         throw new IOException("Trying to extract file outside of destination directory. See this link for more info: https://snyk.io/research/zip-slip-vulnerability");
                     }
 
-                    // Assuming Empty for Directory
+                    // ASSUMING EMPTY FOR DIRECTORY
                     if (file.Name == "")
                     {
                         Directory.CreateDirectory(Path.GetDirectoryName(completeFileName));
                         continue;
                     }
 
-                    // Create any missing directories
+                    // CREATE ANY MISSING DIRECTORIES
                     var dir = Path.GetDirectoryName(completeFileName);
                     if (!Directory.Exists(dir))
                         Directory.CreateDirectory(dir);
@@ -117,6 +117,7 @@ namespace CutterUpdater
         {
             Console.Title = "CutterUpdater";
             var processes = Process.GetProcessesByName("cutter");
+            
             if (processes.Length > 0)
             {
                 Console.WriteLine("Running instance(s) of cutter:");
@@ -127,15 +128,19 @@ namespace CutterUpdater
                 Console.ReadKey();
                 return 1;
             }
+            
             var versionInfo = FileVersionInfo.GetVersionInfo("cutter.exe");
             var fileVersion = SemVer.Parse(versionInfo.FileVersion);
-            var fileDate = new FileInfo("cutter.exe").CreationTimeUtc.Date;
+            var fileDate    = new FileInfo("cutter.exe").CreationTimeUtc.Date;
             Console.WriteLine($"Detected Cutter v{fileVersion} ({fileDate:yyyy-MM-dd})");
+          
             client.DefaultRequestHeaders.Add("User-Agent", "CutterUpdater");
-            var json = client.GetStringAsync("https://api.github.com/repos/radareorg/cutter/releases/latest").Result;
-            var release = Newtonsoft.Json.JsonConvert.DeserializeObject<Release>(json);
+            
+            var json          = client.GetStringAsync("https://api.github.com/repos/radareorg/cutter/releases/latest").Result;
+            var release       = Newtonsoft.Json.JsonConvert.DeserializeObject<Release>(json);
             var latestVersion = SemVer.Parse(release.TagName);
-            var latestDate = release.CreatedAt.Date;
+            var latestDate    = release.CreatedAt.Date;
+            
             Console.WriteLine($"Latest release v{latestVersion} ({latestDate:yyyy-MM-dd})");
             var shouldUpdate = fileVersion < latestVersion;
             if (fileVersion.ToString() == $"{latestVersion.Major}.{latestVersion.Minor}.{latestVersion.Patch}" && (latestDate - fileDate).TotalDays > 2)
@@ -152,12 +157,17 @@ namespace CutterUpdater
                 {
                     var asset = release.Assets.Where(a => a.Name.Contains("Windows")).FirstOrDefault();
                     Console.WriteLine($"Downloading {asset.BrowserDownloadUrl}");
-                    var destinationFile = Path.GetFileName(asset.BrowserDownloadUrl.LocalPath);
+                    
+                    var destinationFile     = Path.GetFileName(asset.BrowserDownloadUrl.LocalPath);
+                    
                     client.ProgressChanged += Client_ProgressChanged;
                     client.StartDownload(asset.BrowserDownloadUrl.ToString(), destinationFile).Wait();
+                    
                     Console.Title = "CutterUpdater";
+                    
                     ExtractZipFileToDirectory(destinationFile, ".", true);
                     File.Delete(destinationFile);
+                    
                     Console.WriteLine($"Cutter updated to v{latestVersion}!");
                 }
             }
@@ -167,6 +177,7 @@ namespace CutterUpdater
             }
             Console.WriteLine("Press any key to exit...");
             Console.ReadKey();
+            
             return 0;
         }
 
